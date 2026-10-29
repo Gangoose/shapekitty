@@ -19,9 +19,9 @@ draw do
   background 24, 24, 31
 
   stroke 255
-  stroke_weight 2
+  stroke_weight 1
   fill 255, 100, 100, 180
-  square(150, 150, 100)
+  square(150, 150, 100, 10)
 end
 
 

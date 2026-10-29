@@ -43,7 +43,7 @@ module Shapekitty
 
       current_fps = @target_fps
 
-      # accept an argument (e.g. `_time`) so LibUI's callback argument doesn't crash the program
+      # accept an argument (`_time`) so LibUI's callback argument doesn't crash the program. *bleurgh*
       timer_block = lambda do |_time|
         if @interrupted
           UI.quit
@@ -144,12 +144,21 @@ module Shapekitty
       stroke_shape
     end
 
+    def point(x, y)
+      @cr.save
+      @cr.set_line_cap(Cairo::LINE_CAP_ROUND)
+      @cr.move_to(x, y)
+      @cr.line_to(x, y)
+      stroke_shape
+      @cr.restore
+    end
+
     def circle(x, y, d)
       @cr.arc(x, y, d / 2.0, 0, 2 * Math::PI)
       paint_shape
     end
 
-    def ellipse(x, y, w, h)
+    def ellipse(x, y, w, h = w)
       @cr.save
       @cr.translate(x, y)
       @cr.scale(w / 2.0, h / 2.0)
@@ -158,13 +167,55 @@ module Shapekitty
       paint_shape
     end
 
-    def rect(x, y, w, h)
-      @cr.rectangle(x, y, w, h)
+    def capsule(x1, y1, x2, y2, r)
+      dx = x2 - x1
+      dy = y2 - y1
+      dist = Math.sqrt(dx * dx + dy * dy)
+
+      @cr.new_path
+
+      if dist.zero?
+        # if points overlap, fallback and draw a circle
+        @cr.arc(x1, y1, r, 0, 2 * Math::PI)
+      else
+        nx = (-dy / dist) * r
+        ny = (dx / dist) * r
+
+        angle = Math.atan2(dy, dx)
+
+        @cr.arc(x1, y1, r, angle + Math::PI / 2, angle + 3 * Math::PI / 2)
+        @cr.arc(x2, y2, r, angle - Math::PI / 2, angle + Math::PI / 2)
+        @cr.close_path
+      end
+
       paint_shape
     end
 
-    def square(x, y, s)
-      @cr.rectangle(x, y, s, s)
+    def rect(x, y, w, h, tl = 0, tr = tl, br = tl, bl = tl)
+      if tl > 0
+        @cr.new_sub_path
+        @cr.arc(x + w - tr, y + tr, tr, 3 * Math::PI / 2, 2 * Math::PI)
+        @cr.arc(x + w - br, y + h - br, br, 0, Math::PI / 2)
+        @cr.arc(x + bl, y + h - bl, bl, Math::PI / 2, Math::PI)
+        @cr.arc(x + tl, y + tl, tl, Math::PI, 3 * Math::PI / 2)
+        @cr.close_path
+      else
+        @cr.rectangle(x, y, w, h)
+      end
+      paint_shape
+    end
+
+    def square(x, y, s, tl = 0, tr = tl, br = tl, bl = tl)
+      if tl > 0
+        @cr.new_sub_path
+        @cr.arc(x + s - tr, y + tr, tr, 3 * Math::PI / 2, 2 * Math::PI)
+        @cr.arc(x + s - br, y + s - br, br, 0, Math::PI / 2)
+        @cr.arc(x + bl, y + s - bl, bl, Math::PI / 2, Math::PI)
+        @cr.arc(x + tl, y + tl, tl, Math::PI, 3 * Math::PI / 2)
+        @cr.close_path
+      else
+        @cr.rectangle(x, y, s, s)
+      end
       paint_shape
     end
 
