@@ -11,17 +11,17 @@ include Shapekitty::Global
 # kitty = Shapekitty::Sketch.new # uncomment this
 
 setup do
-  create_canvas 520, 300
-  # or kitty.create_canvas 520, 300
+  create_canvas 400, 400
+  # or kitty.create_canvas 400, 400
 end
 
 draw do
   background 24, 24, 31
 
   stroke 255
-  stroke_weight 4
+  stroke_weight 2
   fill 255, 100, 100, 180
-  square(width / 2, height / 2, 120)
+  square(150, 150, 100)
 end
 
 

@@ -138,6 +138,12 @@ module Shapekitty
     # state end
 
     # shapes
+    def line(x1, y1, x2, y2)
+      @cr.move_to(x1, y1)
+      @cr.line_to(x2, y2)
+      stroke_shape
+    end
+
     def circle(x, y, d)
       @cr.arc(x, y, d / 2.0, 0, 2 * Math::PI)
       paint_shape
@@ -217,6 +223,14 @@ module Shapekitty
         @cr.stroke
       end
       @cr.new_path # clear the path in case neither fill nor stroke ran
+    end
+
+    def stroke_shape
+      if @do_stroke
+        @cr.set_source_rgba(*@stroke)
+        @cr.set_line_width(@weight)
+        @cr.stroke
+      end
     end
 
     # LibUI calls this whenever the area needs repainting. it handles Cairo's pixels as an image.
