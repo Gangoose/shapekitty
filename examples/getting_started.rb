@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-# if you have used Processing
+# if you have used Processing or p5.js
+# shapekitty's API should be very familiar to you
 
 require "shapekitty"
 include Shapekitty::Global
