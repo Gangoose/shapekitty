@@ -9,6 +9,17 @@ module Shapekitty
     QUARTER_PI = PI/4.0
     VERSION = 0 # i'll set this up later
 
+    CORNER = "CORNER"
+    CORNERS = "CORNERS"
+    CENTER = "CENTER"
+    RADIUS = "RADIUS"
+
+    PIE = "PIE"
+    CHORD = "CHORD"
+    OPEN = "OPEN"
+    PIE_OPEN = "PIE_OPEN"
+    CHORD_OPEN = "CHORD_OPEN"
+
     Sketch.public_instance_methods(false).each do |name|
       next if Object.method_defined?(name) || Object.private_method_defined?(name)
 
