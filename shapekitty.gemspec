@@ -16,7 +16,7 @@ Gem::Specification.new do |spec|
   # spec.metadata["homepage_uri"] = spec.homepage
   # spec.metadata["source_code_uri"] = "TODO: Put your gem's public repo URL here."
   spec.add_dependency "cairo", "~> 1.17"
-  # spec.add_dependency "fiddle", ">= 1.1" # who knows, this might be needed later...
+  spec.add_dependency "fiddle", ">= 1.1" # oh yeah!
   spec.add_dependency "libui", "= 0.3.0.pre3"
 
   # Uncomment the line below to require MFA for gem pushes.

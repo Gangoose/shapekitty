@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require "libui"
+require_relative "shapes"
+require_relative "text"
 
 module Shapekitty
 
@@ -15,6 +17,7 @@ module Shapekitty
 
     # main loop
     def initialize
+      # state from sketch.rb
       @fill      = [1.0, 1.0, 1.0, 1.0]
       @stroke    = [0.0, 0.0, 0.0, 1.0]
       @do_fill   = true
@@ -22,8 +25,20 @@ module Shapekitty
       @weight    = 1.0
       @frame_count = 0
       @target_fps = 60
+
+      # state for shapes.rb
       @rect_mode = CORNER
       @ellipse_mode = CENTER
+
+      # state for text.rb
+      @text_size = 12
+      @text_font = "Helvetica"
+      @text_horizontal = LEFT
+      @text_vertical = BASELINE
+      @text_leading = nil
+      @text_style = NORMAL
+      @text_weight = Cairo::FONT_WEIGHT_NORMAL
+      @text_slant  = Cairo::FONT_SLANT_NORMAL
     end
 
     def setup(&block)
@@ -83,7 +98,7 @@ module Shapekitty
       shutdown
     end
 
-    def create_canvas(w, h, title = "Shapekit")
+    def create_canvas(w, h, title = "shapekitty")
       @width  = w
       @height = h
       UI.init
@@ -139,317 +154,18 @@ module Shapekitty
     end
     # state end
 
-    # shapes
-    def line(x1, y1, x2, y2)
-      @cr.move_to(x1, y1)
-      @cr.line_to(x2, y2)
-      stroke_shape
+    def translate(x, y)
+      @cr.translate(x, y)
     end
 
-    def point(x, y)
-      @cr.save
-      @cr.set_line_cap(Cairo::LINE_CAP_ROUND)
-      @cr.move_to(x, y)
-      @cr.line_to(x, y)
-      stroke_shape
-      @cr.restore
+    def rotate(angle)
+      @cr.rotate(angle)
     end
 
-    def circle(*args)
-      case @ellipse_mode
-      when CENTER
-        x, y, d = args
-        @cr.arc(x, y, d / 2.0, 0, 2 * Math::PI)
-      when CORNER
-        x, y, d = args
-        @cr.arc(x + (d / 2.0), y + (d / 2.0), d / 2.0, 0, 2 * Math::PI)
-      when RADIUS
-        x, y, r = args
-        @cr.arc(x, y, r, 0, 2 * Math::PI)
-      when CORNERS
-        x1, y1, x2, y2 = args
-        cx = (x1 + x2) / 2.0
-        cy = (y1 + y2) / 2.0
-        r  = (x2 - x1).abs / 2.0
-        @cr.arc(cx, cy, r, 0, 2 * Math::PI)
-      end
-      paint_shape
+    def scale(sx, sy = nil)
+      sy ||= sx
+      @cr.scale(sx, sy)
     end
-
-    def ellipse(x, y, w, h = w)
-      case @ellipse_mode
-      when CENTER
-        x, y, w, h = args
-        h ||= w
-        @cr.save
-        @cr.translate(x, y)
-        @cr.scale(w / 2.0, h / 2.0)
-        @cr.arc(0, 0, 1.0, 0, 2 * Math::PI)
-        @cr.restore
-      when CORNER
-        x, y, w, h = args
-        h ||= w
-        @cr.save
-        @cr.translate(x + (w / 2.0), y + (h / 2.0))
-        @cr.scale(w / 2.0, h / 2.0)
-        @cr.arc(0, 0, 1.0, 0, 2 * Math::PI)
-        @cr.restore
-      when RADIUS
-        x, y, rx, ry = args
-        ry ||= rx
-        @cr.save
-        @cr.translate(x, y)
-        @cr.scale(rx, ry)
-        @cr.arc(0, 0, 1.0, 0, 2 * Math::PI)
-        @cr.restore
-      when CORNERS
-        x1, y1, x2, y2 = args
-        cx = (x1 + x2) / 2.0
-        cy = (y1 + y2) / 2.0
-        w  = (x2 - x1).abs
-        h  = (y2 - y1).abs
-        @cr.save
-        @cr.translate(cx, cy)
-        @cr.scale(w / 2.0, h / 2.0)
-        @cr.arc(0, 0, 1.0, 0, 2 * Math::PI)
-        @cr.restore
-      end
-      paint_shape
-    end
-
-    def arc(x, y, w, h, start, stop, mode = PIE_OPEN) # later
-      cx, cy, w, h = case @ellipse_mode
-      when CENTER
-        h ||= w
-        [x, y, w, h]
-      when CORNER
-        h ||= w
-        [x + (w / 2.0), y + (h / 2.0), w, h]
-      when RADIUS
-        ry = h || w
-        [x, y, w * 2.0, ry * 2.0]
-      when CORNERS
-        x1, y1, x2, y2 = x, y, w, h
-        [(x1 + x2) / 2.0, (y1 + y2) / 2.0, (x2 - x1).abs, (y2 - y1).abs]
-      end
-
-      @cr.save
-      @cr.translate(cx, cy)
-      @cr.scale(w / 2.0, h / 2.0)
-
-      @cr.new_path
-
-      case mode
-      when PIE
-        @cr.move_to(0, 0)
-        @cr.arc(0, 0, 1.0, start, stop)
-        @cr.close_path
-      when CHORD
-        @cr.arc(0, 0, 1.0, start, stop)
-        @cr.close_path
-      when CHORD_OPEN, OPEN, PIE_OPEN
-        @cr.arc(0, 0, 1.0, start, stop)
-        @cr.close_path if mode == CHORD_OPEN
-      else
-        @cr.arc(0, 0, 1.0, start, stop)
-      end
-
-      @cr.restore
-
-      paint_shape
-    end
-
-    def capsule(x1, y1, x2, y2, r)
-      dx = x2 - x1
-      dy = y2 - y1
-      dist = Math.sqrt(dx * dx + dy * dy)
-
-      @cr.new_path
-
-      if dist.zero?
-        # if points overlap, fallback and draw a circle
-        @cr.arc(x1, y1, r, 0, 2 * Math::PI)
-      else
-        nx = (-dy / dist) * r
-        ny = (dx / dist) * r
-
-        angle = Math.atan2(dy, dx)
-
-        @cr.arc(x1, y1, r, angle + Math::PI / 2, angle + 3 * Math::PI / 2)
-        @cr.arc(x2, y2, r, angle - Math::PI / 2, angle + Math::PI / 2)
-        @cr.close_path
-      end
-
-      paint_shape
-    end
-
-    def rect(x, y, w, h, tl = 0, tr = tl, br = tl, bl = tl)
-      case @rect_mode
-      when CORNER
-        rx, ry, rw, rh = x, y, w, h
-      when CORNERS
-        rx, ry, rw, rh = x, y, w - x, h - y
-      when CENTER
-        rx, ry, rw, rh = x - (w / 2.0), y - (h / 2.0), w, h
-      when RADIUS
-        rx, ry, rw, rh = x - w, y - h, w * 2.0, h * 2.0
-      end
-
-      if tl > 0
-        @cr.new_sub_path
-        @cr.arc(rx + rw - tr, ry + tr, tr, 3 * Math::PI / 2, 2 * Math::PI)
-        @cr.arc(rx + rw - br, ry + rh - br, br, 0, Math::PI / 2)
-        @cr.arc(rx + bl, ry + rh - bl, bl, Math::PI / 2, Math::PI)
-        @cr.arc(rx + tl, ry + tl, tl, Math::PI, 3 * Math::PI / 2)
-        @cr.close_path
-      else
-        @cr.rectangle(rx, ry, rw, rh)
-      end
-      paint_shape
-    end
-
-    def square(x, y, s, tl = 0, tr = tl, br = tl, bl = tl)
-      case @rect_mode
-      when CORNER
-        rx, ry, rw, rh = x, y, s, s
-      when CORNERS
-        rx, ry, rw, rh = x, y, s - x, s - y
-      when CENTER
-        rx, ry, rw, rh = x - (s / 2.0), y - (s / 2.0), s, s
-      when RADIUS
-        rx, ry, rw, rh = x - s, y - s, s * 2.0, s * 2.0
-      end
-
-      if tl > 0
-        @cr.new_sub_path
-        @cr.arc(rx + rw - tr, ry + tr, tr, 3 * Math::PI / 2, 2 * Math::PI)
-        @cr.arc(rx + rw - br, ry + rh - br, br, 0, Math::PI / 2)
-        @cr.arc(rx + bl, ry + rh - bl, bl, Math::PI / 2, Math::PI)
-        @cr.arc(rx + tl, ry + tl, tl, Math::PI, 3 * Math::PI / 2)
-        @cr.close_path
-      else
-        @cr.rectangle(rx, ry, rw, rh)
-      end
-      paint_shape
-    end
-
-    def quad(x1, y1, x2, y2, x3, y3, x4, y4)
-      @cr.move_to(x1, y1)
-      @cr.line_to(x2, y2)
-      @cr.line_to(x3, y3)
-      @cr.line_to(x4, y4)
-      @cr.close_path
-      paint_shape
-    end
-
-    def triangle(x1, y1, x2, y2, x3, y3)
-      @cr.move_to(x1, y1)
-      @cr.line_to(x2, y2)
-      @cr.line_to(x3, y3)
-      @cr.close_path
-      paint_shape
-    end
-
-    def rect_mode(mode)
-      case mode
-      when CORNER then @rect_mode = CORNER
-      when CORNERS then @rect_mode = CORNERS
-      when CENTER then @rect_mode = CENTER
-      when RADIUS then @rect_mode = RADIUS
-      end
-    end
-
-    def ellipse_mode(mode)
-      case mode
-      when CORNER then @ellipse_mode = CORNER
-      when CORNERS then @ellipse_mode = CORNERS
-      when CENTER then @ellipse_mode = CENTER
-      when RADIUS then @ellipse_mode = RADIUS
-      end
-    end
-
-    def beginShape
-      @vertices = []
-      @in_shape = true
-      @cr.new_path
-    end
-
-    def vertex(x, y)
-      @vertices << { type: :vertex, x: x, y: y, fill: @fill&.dup }
-    end
-
-    def bezierVertex(cp1x, cp1y, cp2x, cp2y, x, y)
-      @vertices << { type: :bezier, cp1x: cp1x, cp1y: cp1y, cp2x: cp2x, cp2y: cp2y, x: x, y: y }
-    end
-
-    def quadraticVertex(cp1x, cp1y, x, y)
-      @vertices << { type: :quadratic, cp1x: cp1x, cp1y: cp1y, x: x, y: y }
-    end
-
-    def beginContour
-      @vertices << { type: :begin_contour }
-    end
-
-    def endContour
-      @vertices << { type: :end_contour }
-    end
-
-    def endShape(close = false)
-      return if @vertices.empty?
-
-      @cr.new_path
-      # uses the even-odd fill rule to support holes created by contours natively
-      @cr.fill_rule = Cairo::FILL_RULE_EVEN_ODD
-
-      @vertices.each_with_index do |v, i|
-        case v[:type]
-        when :vertex
-          if i == 0 || @vertices[i - 1][:type] == :begin_contour
-            @cr.move_to(v[:x], v[:y])
-          else
-            @cr.line_to(v[:x], v[:y])
-          end
-        when :bezier
-          @cr.curve_to(v[:cp1x], v[:cp1y], v[:cp2x], v[:cp2y], v[:x], v[:y])
-        when :quadratic
-          # converts quadratic bezier control point to cubic bezier control points for Cairo
-          curr_x, curr_y = @cr.current_point
-          cp1x = curr_x + (2.0 / 3.0) * (v[:cp1x] - curr_x)
-          cp1y = curr_y + (2.0 / 3.0) * (v[:cp1y] - curr_y)
-          cp2x = v[:x] + (2.0 / 3.0) * (v[:cp1x] - v[:x])
-          cp2y = v[:y] + (2.0 / 3.0) * (v[:cp1y] - v[:y])
-          @cr.curve_to(cp1x, cp1y, cp2x, cp2y, v[:x], v[:y])
-        when :begin_contour
-          @cr.new_sub_path
-        when :end_contour
-          # just here
-        end
-      end
-
-      @cr.close_path if close
-      paint_shape
-      @in_shape = false
-    end
-
-    def bezier(x1, y1, x2, y2, x3, y3, x4, y4)
-      @cr.new_path
-      @cr.move_to(x1, y1)
-      @cr.curve_to(x2, y2, x3, y3, x4, y4)
-      paint_shape
-    end
-
-    def curve(x1, y1, x2, y2, x3, y3, x4, y4)
-      cp1x = x2 + (x3 - x1) / 6.0
-      cp1y = y2 + (y3 - y1) / 6.0
-      cp2x = x3 - (x4 - x2) / 6.0
-      cp2y = y3 - (y4 - y2) / 6.0
-
-      @cr.new_path
-      @cr.move_to(x2, y2)
-      @cr.curve_to(cp1x, cp1y, cp2x, cp2y, x3, y3)
-      paint_shape
-    end
-    # shapes end
 
     def push
       @state_stack ||= []
@@ -460,7 +176,13 @@ module Shapekitty
         do_fill: @do_fill,
         do_stroke: @do_stroke,
         rect_mode: @rect_mode,
-        ellipse_mode: @ellipse_mode
+        ellipse_mode: @ellipse_mode,
+        text_size: @text_size,
+        text_font: @text_font,
+        text_horizontal: @text_horizontal,
+        text_vertical: @text_vertical,
+        text_leading: @text_leading,
+        text_style: @text_style
       })
       @cr.save
     end
@@ -476,6 +198,12 @@ module Shapekitty
       @do_stroke = state[:do_stroke]
       @rect_mode = state[:rect_mode]
       @ellipse_mode = state[:ellipse_mode]
+      @text_size = state[:text_size]
+      @text_font = state[:text_font]
+      @text_horizontal = state[:text_horizontal]
+      @text_vertical = state[:text_vertical]
+      @text_leading = state[:text_leading]
+      @text_style = state[:text_style]
 
       # Restore Cairo's native graphics state (transforms, clips, etc.)
       @cr.restore
@@ -496,6 +224,16 @@ module Shapekitty
     # blue (and vice versa), the bytes land in the order LibUI wants, and we never have to
     # reshuffle 4 bytes x every pixel x every frame in Ruby.
     def to_rgba(*args)
+      # hex code stuff
+      if args.size == 1 && args[0].is_a?(String) && args[0].start_with?("#")
+        hex = args[0].delete("#")
+        r = hex[0..1].to_i(16)
+        g = hex[2..3].to_i(16)
+        b = hex[4..5].to_i(16)
+        a = hex.length == 8 ? hex[6..7].to_i(16) : 255
+        args = [r, g, b, a]
+      end
+
       vals = case args.size
              when 1 then [args[0], args[0], args[0], 255]
              when 2 then [args[0], args[0], args[0], args[1]]
