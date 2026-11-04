@@ -3,6 +3,7 @@
 require "libui"
 require_relative "shapes"
 require_relative "text"
+require_relative "images"
 
 module Shapekitty
 
@@ -39,6 +40,9 @@ module Shapekitty
       @text_style = NORMAL
       @text_weight = Cairo::FONT_WEIGHT_NORMAL
       @text_slant  = Cairo::FONT_SLANT_NORMAL
+
+      # state for images.rb
+      @image_mode = CORNER
     end
 
     def setup(&block)

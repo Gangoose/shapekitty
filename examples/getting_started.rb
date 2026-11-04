@@ -10,9 +10,12 @@ include Shapekitty::Global
 # just remove the global inclusion (include Shapekitty::Global).
 # kitty = Shapekitty::Sketch.new # uncomment this
 
+cat = nil
+
 setup do
   create_canvas 400, 400
   # or kitty.create_canvas 400, 400
+  cat = load_image("/home/sourdoggy/Documents/shapekitty/img.png")
 end
 
 draw do
@@ -22,9 +25,5 @@ draw do
   stroke_weight 1
   fill 255, 100, 100, 180
   square(150, 150, 100, 10)
+  image(cat, 0, 0, 400)
 end
-
-
-
-
-
